@@ -9,25 +9,26 @@ public class MaquinaVirtual
         //MEMÓRIA DE PROGRAMA
         //lista de instruções
         ArrayList<String> instrucao = new ArrayList();
-
+        //instrucao.add("0101001001100001"); //get
+        instrucao.add("0110001001101001"); //set
+        //instrucao.add("0000001000101000"); //soma tipo c
+        instrucao.add("0001001001101001"); //mult tipo c
+        instrucao.add("0010001001010001"); //and tipo c
+       // instrucao.add("0011001001101011"); //or tipo c
+        instrucao.add("1000001001101001"); //soma tipo v
+        //instrucao.add("1001001001101001"); //mult tipo v
+        instrucao.add("1010001001100100"); //and tipo v
+        instrucao.add("1011001001100000"); //or tipo v
+        instrucao.add("0100001001100010"); //jump
         instrucao.add("0101001001100001"); //get
         instrucao.add("0110001001101001"); //set
+        instrucao.add("1000011000110001"); //soma tipo v
+        instrucao.add("0001000001100111"); //mult tipo c
+        instrucao.add("1010001001001000"); //and tipo v
+       
         
-        instrucao.add("0000001001101000"); //soma tipo c
-        instrucao.add("0001001001101001"); //mult tipo c
         
-        instrucao.add("0010001001100001"); //and tipo c
-        instrucao.add("0011001001101011"); //or tipo c
-        
-        instrucao.add("0100001001100010"); //jump
-        
-        instrucao.add("1000001001101001"); //soma tipo v
-        instrucao.add("1001001001101001"); //mult tipo v
-        
-        instrucao.add("1010001001101001"); //and tipo v
-        instrucao.add("1011001001101001"); //or tipo v
-        
-        //MEMÓRIA CACHE
+        //MEMÓRIA CACHE COM 4 CÉLULAS
         ArrayList <InfoCache> cache = new ArrayList();
         InfoCache c1 = new InfoCache();
         InfoCache c2 = new InfoCache();
@@ -65,50 +66,60 @@ public class MaquinaVirtual
         f.registradores.add(1); //v8
         f.registradores.add(10); //v9
         
-        for(int j=0;j<5;j++)
+        
+        System.out.println("SIMULAÇÃO DE UMA ARQUITETURA DE COMPUTADOR COM MEMÓRIA CACHE:");
+        System.out.println("Valores iniciais dos registradores: ");
+        for (int i=0;i<f.registradores.size();i++)
         {
+            System.out.println("Registrador "+i+" = "+f.registradores.get(i));
+        }
+        
+        //PROCESSAMENTO DAS INSTRUÇÕES (BUSCA NA MEMÓRIA + INTERPRETAÇÃO + EXECUÇÃO)
+        for(int j=0;j<8;j++) //Roda apenas 5 vezes para teste
+        { //Na teoria aqui seria  um loop infinito!
             boolean achou=false;
             System.out.println("*********************************************");
             System.out.println("Execução da instrução: "+j);
             System.out.println("PC = "+PC);
-                for(int i=0;i<4;i++)
-                {
-                    if(cache.get(i).valid)
-                    {
-                       if(cache.get(i).tag==PC)
-                       {
-                           IR = cache.get(i).data;
-                           achou=true;
-                           System.out.println("CACHE HIT");
-                           break;
-                       }
-                    }
-                }
-                if(!achou)
-                {
-                    System.out.println("CACHE MISS");
-                    IR = instrucao.get(PC);
-                    int end=PC;
-                    for(int i=0;i<4;i++)
-                    {
-                        //if(!cache.get(i).valid)
-                       // {
-                           InfoCache aux = new InfoCache();
-                           aux.celula=i;
-                           aux.valid=true;
-                           aux.tag=end;
-                           aux.data=instrucao.get(end);
-                           cache.add(i, aux);
-                           end++;
-                      //  }
-                    }
-                }     
-            PC = PC + 1;
-            System.out.println("IR="+IR);
-            if(IR.charAt(0)=='0') //tipo C
+            for(int i=0;i<4;i++) //Procurar a instrução na memória cache
             {
+                if(cache.get(i).valid) //Verifica se existe alguma informação associada a célula i
+                {
+                   if(cache.get(i).tag==PC) //Verifica se o campo tag faz referência ao endereço da
+                   {                      //RAM correspondente ao valor de PC
+                       //Em caso afirmativo:
+                       IR = cache.get(i).data; //Faz uma cópia dos dados para a memória cache
+                       achou=true; //A instrução foi encontrada na cache, logo temos um HIT
+                       System.out.println("CACHE HIT");
+                       break;
+                   }
+                }
+            }
+            if(!achou)//A instrução não foi encontrada na Cache, logo temos um MISS
+            {
+                System.out.println("CACHE MISS"); 
+                IR = instrucao.get(PC); //A instrução atual é buscada na RAM 
+                //(arquitetura de leitura LOOK ASIDE)
+                int end=PC;
+                for(int i=0;i<4;i++) //Carregar os valores próximos a instrução para a Cache
+                { //conforme o princípio de Localidade
+                    InfoCache aux = new InfoCache();
+                    aux.celula=i;
+                    aux.valid=true;
+                    aux.tag=end;
+                    aux.data=instrucao.get(end);
+                    cache.add(i, aux);
+                    end++;
+                }
+            }     
+            PC = PC + 1; 
+            System.out.println("IR="+IR); //instruçãp a ser executada
+            if(IR.charAt(0)=='0') //tipo C
+            { 
+                System.out.println("Instrução tipo C!");
                 if(IR.substring(1, 4).equals("000")) //Instrução: Soma
                 {
+                    System.out.println("SOMA");
                     operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2)); //Busca nos registradores
                     System.out.println("operando1 da soma: "+operando1);
                     operando2 = Integer.parseInt(IR.substring(12, 16),2);
@@ -117,10 +128,12 @@ public class MaquinaVirtual
                     System.out.println("Soma: "+resultado);
                     endereco = Integer.parseInt(IR.substring(8, 12),2); //Armazena no registrador
                     f.funcao_set(endereco, resultado);
+                    System.out.println("Resultado armazenado no registrador "+endereco);
                     
                 }
                 else if(IR.substring(1, 4).equals("001")) //Instrução: Multiplicação
                 {
+                    System.out.println("MULTIPLICAÇÃO");
                     operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2));
                     System.out.println("operando1 da mult: "+operando1);
                     operando2 = Integer.parseInt(IR.substring(12, 16),2);
@@ -129,10 +142,12 @@ public class MaquinaVirtual
                     System.out.println("Mult: "+resultado);
                     endereco = Integer.parseInt(IR.substring(8, 12),2);
                     f.funcao_set(endereco, resultado);
+                    System.out.println("Resultado armazenado no registrador "+endereco);
 
                 }
                 else if(IR.substring(1, 4).equals("010")) //Instrução: And
                 {
+                    System.out.println("AND");
                     int b1,b2;//variável para receber bit a bit
                     String t = "0"; //"vetor" de char temporario
                     String r = "0"; //resposta
@@ -191,9 +206,11 @@ public class MaquinaVirtual
                     System.out.println("Resposta em decimal: "+Integer.parseInt(r,2));
                     endereco = Integer.parseInt(IR.substring(8, 12),2);
                     f.funcao_set(endereco,Integer.parseInt(r,2));
+                    System.out.println("Resultado armazenado no registrador "+endereco);
                 }
                 else if(IR.substring(1, 4).equals("011")) //Instrução: Or
                 {
+                    System.out.println("OR");
                     int b1,b2; //recebe bit a bit
                     String t = "0";//"vetor" de char temporario
                     String r = "0";//resposta
@@ -252,20 +269,24 @@ public class MaquinaVirtual
                     System.out.println("Resposta em decimal: "+Integer.parseInt(r,2));
                     endereco = Integer.parseInt(IR.substring(8, 12),2);
                     f.funcao_set(endereco,Integer.parseInt(r,2));    
+                    System.out.println("Resultado armazenado no registrador "+endereco);
                 }
                 else if(IR.substring(1, 4).equals("100")) //Instrução: jump
                 {
+                   System.out.println("JUMP");
                    PC = Integer.parseInt(IR.substring(12, 16),2); 
-                   System.out.println("PC: "+PC);
+                   System.out.println("Novo valor de PC: "+PC);
                 }
                 else if(IR.substring(1, 4).equals("101")) //Instrução: get
                 {
+                    System.out.println("GET");
                     endereco = Integer.parseInt(IR.substring(12, 16),2);
                     System.out.print("O valor guardado no registrador de endereco "+endereco);
                     System.out.println(" eh "+f.funcao_get(endereco));
                 }
                 else if(IR.substring(1, 4).equals("110")) //Instrução: set
                 {
+                    System.out.println("SET");
                     operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2)); //constante
                     endereco = Integer.parseInt(IR.substring(8, 12),2);
                     f.funcao_set(endereco, operando1);
@@ -275,8 +296,10 @@ public class MaquinaVirtual
         }
         else if(IR.charAt(0)=='1') //tipo V
         {
-             if(IR.substring(1, 4).equals("000")) //Instrução: Soma
+            System.out.println("Instrução tipo V!");
+            if(IR.substring(1, 4).equals("000")) //Instrução: Soma
             {
+                System.out.println("SOMA");
                 operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2));
                 System.out.println("operando1 da soma: "+operando1);
                 operando2 = f.funcao_get(Integer.parseInt(IR.substring(8, 12),2));
@@ -286,10 +309,11 @@ public class MaquinaVirtual
 
                 endereco = Integer.parseInt(IR.substring(12, 16),2);
                 f.funcao_set(endereco, resultado);
-
+                System.out.println("Resultado armazenado no registrador "+endereco);
             }
             else if(IR.substring(1, 4).equals("001")) //Instrução: Multiplicação
             {
+                System.out.println("MULTIPLICAÇÃO");
                 operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2));
                 System.out.println("operando1 da mult: "+operando1);
                 operando2 = f.funcao_get(Integer.parseInt(IR.substring(8, 12),2));
@@ -298,9 +322,11 @@ public class MaquinaVirtual
                 System.out.println("Mult: "+resultado);
                 endereco = Integer.parseInt(IR.substring(12,16),2);
                 f.funcao_set(endereco, resultado);
+                System.out.println("Resultado armazenado no registrador "+endereco);
             }
             else if(IR.substring(1, 4).equals("010")) ////Instrução: And
             {
+                System.out.println("AND");
                 int b1,b2;//recebe bit a bit
                 String t = "0"; //"vetor" de char temporario
                 String r = "0"; //resposta
@@ -361,9 +387,11 @@ public class MaquinaVirtual
                 System.out.println("Resposta em decimal: "+Integer.parseInt(r,2));
                 endereco = Integer.parseInt(IR.substring(12, 16),2);
                 f.funcao_set(endereco,Integer.parseInt(r,2));
+                System.out.println("Resultado armazenado no registrador "+endereco);
             }
             else if(IR.substring(1, 4).equals("011")) //Instrução: Or
             {
+                System.out.println("OR");
                 int b1,b2; //recebe bit a bit
                 String t = "0";//"vetor" de char temporario
                 String r = "0";//resposta
@@ -424,42 +452,20 @@ public class MaquinaVirtual
                 System.out.println("Resposta em binario: "+r);
                 System.out.println("Resposta em decimal: "+Integer.parseInt(r,2));
                 endereco = Integer.parseInt(IR.substring(12, 16),2);
-                f.funcao_set(endereco,Integer.parseInt(r,2));    
+                f.funcao_set(endereco,Integer.parseInt(r,2));  
+                System.out.println("Resultado armazenado no registrador "+endereco);
             }
-            /*else if(IR.substring(1, 4).equals("100")) //jump
-            {
-               PC = Integer.parseInt(IR.substring(8, 12), 2); //Qual endereço?
-               System.out.println("PC: "+PC);
-
-            }
-             else if(IR.substring(1, 4).equals("101")) //get
-            {
-                operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2));
-                operando2 = f.funcao_get(Integer.parseInt(IR.substring(8, 12),2));
-
-                System.out.println("Rs: "+operando1);
-                System.out.println("Constante: "+operando2);
-
-            }
-             else if(IR.substring(1, 4).equals("110")) //set
-            {
-                operando1 = f.funcao_get(Integer.parseInt(IR.substring(4, 8),2));
-                System.out.println("operando1 da mult: "+operando1);
-
-                endereco = Integer.parseInt(IR.substring(12, 16),2);
-                f.funcao_set(endereco, operando1);
-
-            }*/
+            
         }
-            /*System.out.println("************************");
-             for (int i=0;i<f.registradores.size();i++)
-            {
-                System.out.println(f.registradores.get(i));
-            }*/
-       // }
-        
+        System.out.println("Valor dos registradores após execução da instrução:");
+        for (int i=0;i<f.registradores.size();i++)
+        {
+            System.out.println("Registrador "+i+" = "+f.registradores.get(i));
         }
+          
         
     }
+        
+  }
 }
 
